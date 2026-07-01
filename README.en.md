@@ -1,25 +1,25 @@
-# WuKong
+# Baize
 
 [中文](./README.md) | [English](./README.en.md)
 
-WuKong is an AI gateway for multi-model calls. It provides one entry point for model channels, protocol conversion, adaptive routing, request queues, usage accounting, cost analytics, and diagnostic logs.
+Baize is an AI gateway for multi-model calls. It provides one entry point for model channels, protocol conversion, adaptive routing, request queues, usage accounting, cost analytics, and diagnostic logs.
 
 Demo: [https://baize.cloudshift.cn](https://baize.cloudshift.cn)
 
 It keeps model access, protocol conversion, channel routing, usage settlement, and diagnostic logs inside one gateway. Application code can keep using familiar API shapes while the gateway handles provider differences, upstream volatility, usage cost, and debugging clues.
 
 > [!IMPORTANT]
-> WuKong is intended only for lawful and authorized AI gateway, organization-level authentication, multi-model management, usage analytics, cost accounting, and private deployment scenarios.
+> Baize is intended only for lawful and authorized AI gateway, organization-level authentication, multi-model management, usage analytics, cost accounting, and private deployment scenarios.
 >
 > Users must lawfully obtain upstream API keys, accounts, model services, and interface permissions, and must comply with upstream terms of service and applicable laws.
 >
 > When operating this project as a public generative AI service or API resale service, users are responsible for all required filing, licensing, content safety, real-name verification, log retention, tax, payment, and upstream authorization obligations in their jurisdiction.
 
-## Why WuKong
+## Why Baize
 
 Connecting one model service is usually not hard. The maintenance cost appears after multiple models, accounts, and teams run for a while: protocol differences leak into application code, upstream limits and account state affect availability, different workloads compete for the same model resources, failed requests need explanations, and usage cost must line up with real bills.
 
-WuKong keeps those moving parts in the gateway layer so applications can keep a stable model-call boundary.
+Baize keeps those moving parts in the gateway layer so applications can keep a stable model-call boundary.
 
 - Stable call boundary: application code does not bind directly to provider differences; protocol adaptation and upstream endpoint selection stay in the gateway.
 - Reduced failure spread: rate limits, timeouts, 5xx responses, auth failures, and quota problems go through retry, degradation, breaker, or skip paths.
@@ -30,9 +30,9 @@ WuKong keeps those moving parts in the gateway layer so applications can keep a 
 
 ## Why Not Another one-api
 
-one-api solved multi-channel aggregation and admin operations. WuKong keeps those useful parts, but shifts the focus to data-plane quality: how requests enter the gateway, how protocols are converted, how channels are selected, how failures degrade, how billing is settled, and how logs explain decisions.
+one-api solved multi-channel aggregation and admin operations. Baize keeps those useful parts, but shifts the focus to data-plane quality: how requests enter the gateway, how protocols are converted, how channels are selected, how failures degrade, how billing is settled, and how logs explain decisions.
 
-| Area | Common aggregator approach | WuKong approach |
+| Area | Common aggregator approach | Baize approach |
 | --- | --- | --- |
 | Forwarding | Mostly OpenAI-compatible proxying with special branches | Passthrough first; convert only when protocols differ |
 | Protocol boundary | Conversion logic often spreads across channel adaptors | `EntryPoint -> Endpoint -> Inlet -> Outlet` as one model |
@@ -101,7 +101,7 @@ docker run --name wukong -d --restart always \
   wukong:local
 ```
 
-If `SQL_DSN` is not set, WuKong uses SQLite by default. When embedded PostgreSQL is enabled locally, WuKong uses embedded PostgreSQL. External PostgreSQL and Redis are recommended for production or multi-instance deployments.
+If `SQL_DSN` is not set, Baize uses SQLite by default. When embedded PostgreSQL is enabled locally, Baize uses embedded PostgreSQL. External PostgreSQL and Redis are recommended for production or multi-instance deployments.
 
 ### Docker Compose
 
@@ -178,7 +178,7 @@ For multi-instance deployments, use external PostgreSQL and configure Redis for 
 
 ## Architecture Overview
 
-![WuKong AI gateway architecture overview](./docs/ai-gateway-overview.png)
+![Baize AI gateway architecture overview](./docs/ai-gateway-overview.png)
 
 ```mermaid
 flowchart LR
@@ -193,7 +193,7 @@ flowchart LR
 
 ## Design Principles
 
-WuKong keeps entry points, routing, protocol conversion, billing, and diagnostics in the gateway so multi-channel model access can remain stable, controlled, and explainable:
+Baize keeps entry points, routing, protocol conversion, billing, and diagnostics in the gateway so multi-channel model access can remain stable, controlled, and explainable:
 
 - Runtime-aware routing: choose better channels using configured weights, live latency, error rate, heartbeat state, and breaker state.
 - Smooth health detection: use phi-style heartbeat detection to reduce false positives from short upstream jitter.
@@ -205,7 +205,7 @@ WuKong keeps entry points, routing, protocol conversion, billing, and diagnostic
 
 ## Architecture Boundaries
 
-WuKong's adaptor design has one goal: adding a channel should start with declaring its capabilities, not copying a full relay flow.
+Baize's adaptor design has one goal: adding a channel should start with declaring its capabilities, not copying a full relay flow.
 
 An adaptor keeps four responsibilities:
 
@@ -225,11 +225,11 @@ Those methods describe:
 - `Heartbeat()`: minimal request for manual tests and heartbeat probes.
 - `Endpoints()`: supported upstream APIs.
 
-Traditional adaptors tend to put conversion, transport, response handling, billing, and logs inside each channel until the adaptor becomes a `God Interface`. WuKong keeps the shared path in the gateway: entry detection, routing, protocol conversion, HTTP transport, response normalization, usage settlement, and audit logging use one flow. The adaptor only keeps channel-specific differences such as upstream addresses, authentication, request format, and response outlet behavior.
+Traditional adaptors tend to put conversion, transport, response handling, billing, and logs inside each channel until the adaptor becomes a `God Interface`. Baize keeps the shared path in the gateway: entry detection, routing, protocol conversion, HTTP transport, response normalization, usage settlement, and audit logging use one flow. The adaptor only keeps channel-specific differences such as upstream addresses, authentication, request format, and response outlet behavior.
 
 If protocol conversion logic is pushed into entry handlers or channel adaptors, maintenance cost grows across client protocols, upstream protocols, streaming and non-streaming paths, tool calls, and multimodal payloads. Adding a new client protocol means every channel has to understand how to receive it. Adding a new upstream protocol means several client-to-upstream paths need to be filled in. Logs, billing, safety checks, error classification, and usage aggregation then start to follow those branches too, which leads to some paths being fully observable while others miss fields or classify errors too generically.
 
-WuKong splits the problem into two layers: channel adaptors declare which upstream endpoints a provider supports, while protocol conversion happens only at the `Endpoint.Inlet` and `Endpoint.Outlet` boundaries. Adding a provider does not require that provider adaptor to understand every client protocol. Adding a protocol direction does not require rewriting each channel's relay flow. Upstream transport, streaming writes, logs, billing, safety checks, and error classification still use the same gateway pipeline, so more protocols do not force complexity into every adaptor.
+Baize splits the problem into two layers: channel adaptors declare which upstream endpoints a provider supports, while protocol conversion happens only at the `Endpoint.Inlet` and `Endpoint.Outlet` boundaries. Adding a provider does not require that provider adaptor to understand every client protocol. Adding a protocol direction does not require rewriting each channel's relay flow. Upstream transport, streaming writes, logs, billing, safety checks, and error classification still use the same gateway pipeline, so more protocols do not force complexity into every adaptor.
 
 Design notes:
 
@@ -322,12 +322,12 @@ Development guidelines:
 
 ## License
 
-WuKong is licensed under the [GNU Affero General Public License v3.0](./LICENSE), with the AGPLv3 Section 7 additional terms listed in [NOTICE](./NOTICE).
+Baize is licensed under the [GNU Affero General Public License v3.0](./LICENSE), with the AGPLv3 Section 7 additional terms listed in [NOTICE](./NOTICE).
 
-Modified versions that present a user interface must preserve WuKong attribution and the original project link in a prominent about, legal, footer, or attribution location:
+Modified versions that present a user interface must preserve Baize attribution and the original project link in a prominent about, legal, footer, or attribution location:
 
 ```text
-WuKong is an open-source AI gateway derived from one-api.
+Baize is an open-source AI gateway derived from one-api.
 https://github.com/coding4m/wukong
 ```
 
