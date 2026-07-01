@@ -52,6 +52,7 @@ one-api 解决了多渠道聚合和后台管理问题。Baize 继续保留这类
 - 🔁 **透传与协议转换**：OpenAI 兼容上游优先直连，OpenAI Chat / Responses、Anthropic Messages、Gemini 之间按显式协议矩阵转换。
 - 🧩 **声明式适配器**：渠道只声明上游端点、鉴权、心跳请求和必要的请求 / 响应转换，不接管整条中转生命周期。
 - 🛤️ **统一中转链路**：真实请求、测试渠道和心跳检测复用同一组端点、鉴权、请求构造、响应校验和错误分类抽象。
+- 🚦 **精细化流量管理**：支持请求优先级、泳道隔离、用户和渠道级并发 / 速率限制，分别控制入口压力和上游出站能力。
 - ⚖️ **自适应调度**：结合权重、pending 请求数、EWMA 延迟、首字延迟、错误率、近期失败、心跳和熔断状态选择渠道。
 - 💓 **运行态健康**：使用类 Phi Accrual 的心跳判断和运行时熔断，避免一次上游抖动永久改坏渠道配置。
 - 🌊 **流式响应管线**：服务端统一写 SSE，逐事件执行响应安全检查、日志采样和用量聚合，减少渠道分支绕过公共逻辑。
@@ -107,7 +108,6 @@ docker run --name wukong -d --restart always \
 
 仓库提供 `docker-compose.yml` 作为本地构建部署模板。上线前至少修改：
 
-- `SESSION_SECRET` 为随机长字符串。
 - PostgreSQL 用户、密码和 `SQL_DSN`。
 - 数据和日志挂载路径。
 
@@ -158,7 +158,6 @@ curl "$OPENAI_BASE_URL/chat/completions" \
 | `HOST` | 监听地址，默认 `0.0.0.0` |
 | `SQL_DSN` | 数据库连接串；生产建议使用 PostgreSQL |
 | `REDIS_CONN_STRING` | Redis 连接串；多实例和配置同步建议启用 |
-| `SESSION_SECRET` | 会话密钥；生产必须设置为随机长字符串 |
 | `LOG_DIR` | 日志目录，默认 `./logs` |
 | `CONFIG_SYNC_INTERVAL_SECONDS` | 配置同步间隔 |
 | `CHANNEL_REQUEST_TIMEOUT` | 上游渠道请求超时，单位秒 |

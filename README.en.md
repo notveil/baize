@@ -52,6 +52,7 @@ The tradeoff is simple: **smaller channel adaptors make the gateway pipeline mor
 - 🔁 **Passthrough and protocol conversion**: OpenAI-compatible upstreams are used directly first; OpenAI Chat / Responses, Anthropic Messages, and Gemini are converted through explicit protocol matrices.
 - 🧩 **Declarative adaptors**: channels declare upstream endpoints, auth, heartbeat requests, and required request / response conversion; they do not own the full relay lifecycle.
 - 🛤️ **Unified relay path**: real requests, manual channel tests, and heartbeat probes reuse the same endpoint, auth, request construction, response validation, and error classification abstractions.
+- 🚦 **Fine-grained traffic control**: request priorities, lane isolation, and user/channel concurrency and rate limits control both ingress pressure and upstream egress capacity.
 - ⚖️ **Adaptive routing**: channel selection combines configured weight, pending requests, EWMA latency, first-token latency, error rate, recent failures, heartbeat, and breaker state.
 - 💓 **Runtime health**: phi-style heartbeat detection and runtime breakers avoid permanently damaging channel configuration after one upstream jitter.
 - 🌊 **Streaming response pipeline**: the service owns SSE writes, per-event response safety checks, log sampling, and usage aggregation, reducing channel branches that bypass shared logic.
@@ -107,7 +108,6 @@ If `SQL_DSN` is not set, Baize uses SQLite by default. When embedded PostgreSQL 
 
 `docker-compose.yml` is a local build deployment template. Before going online, change at least:
 
-- `SESSION_SECRET`
 - PostgreSQL credentials and `SQL_DSN`
 - data and log volume paths
 
@@ -152,7 +152,6 @@ Anthropic Messages and Gemini-compatible entry points are also available when th
 | `HOST` | listen host, default `0.0.0.0` |
 | `SQL_DSN` | database connection string; PostgreSQL is recommended for production |
 | `REDIS_CONN_STRING` | Redis connection string; recommended for multi-instance deployments |
-| `SESSION_SECRET` | session secret; set a long random value in production |
 | `LOG_DIR` | log directory, default `./logs` |
 | `CONFIG_SYNC_INTERVAL_SECONDS` | configuration sync interval |
 | `CHANNEL_REQUEST_TIMEOUT` | upstream request timeout in seconds |
