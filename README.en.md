@@ -73,8 +73,8 @@ Requirements:
 - pnpm 9+
 
 ```bash
-git clone https://github.com/coding4m/wukong.git
-cd wukong
+git clone git@github.com:notveil/baize.git
+cd baize
 
 cd web
 pnpm install
@@ -91,15 +91,15 @@ Open `http://localhost:3000` and initialize the root account from the setup page
 ### Local Docker Build
 
 ```bash
-docker build -t wukong:local .
+docker build -t baize:local .
 
-docker run --name wukong -d --restart always \
+docker run --name baize -d --restart always \
   -p 3000:3000 \
   -e TZ=Asia/Shanghai \
   -e LOG_DIR=/app/logs \
   -v "$PWD/data:/data" \
   -v "$PWD/logs:/app/logs" \
-  wukong:local
+  baize:local
 ```
 
 If `SQL_DSN` is not set, Baize uses SQLite by default. When embedded PostgreSQL is enabled locally, Baize uses embedded PostgreSQL. External PostgreSQL and Redis are recommended for production or multi-instance deployments.
@@ -123,14 +123,14 @@ Requires `pnpm`, `nfpm`, and `curl`.
 bash scripts/build-linux-packages.sh
 ```
 
-Packages are written to `dist/packages` for `wukong`, `wukong-pilot`, and `wukong-proxy` on `amd64` / `arm64`, both `deb` and `rpm`.
+Packages are written to `dist/packages` for `baize`, `baize-pilot`, and `baize-proxy` on `amd64` / `arm64`, both `deb` and `rpm`.
 
 ## API Usage
 
 After adding channels and tokens in the console:
 
 ```bash
-export OPENAI_API_KEY="sk-your-wukong-token"
+export OPENAI_API_KEY="sk-your-baize-token"
 export OPENAI_BASE_URL="http://localhost:3000/v1"
 
 curl "$OPENAI_BASE_URL/chat/completions" \
@@ -169,9 +169,9 @@ See [config/config.go](./config/config.go) and [.env.example](./.env.example) fo
 
 The default is one process, which is enough for local and small private deployments. At larger scale, split it into:
 
-- `wukong`: all-in-one mode with console and relay in one process.
-- `wukong-pilot --cp`: control plane for the console, configuration, billing, and background jobs.
-- `wukong-proxy --dp`: data plane for relay traffic, routing, auth, and runtime state.
+- `baize`: all-in-one mode with console and relay in one process.
+- `baize-pilot --cp`: control plane for the console, configuration, billing, and background jobs.
+- `baize-proxy --dp`: data plane for relay traffic, routing, auth, and runtime state.
 
 For multi-instance deployments, use external PostgreSQL and configure Redis for config sync and runtime cache.
 
@@ -327,7 +327,7 @@ Modified versions that present a user interface must preserve Baize attribution 
 
 ```text
 Baize is an open-source AI gateway derived from one-api.
-https://github.com/coding4m/wukong
+https://github.com/notveil/baize
 ```
 
 This project is derived from [one-api](https://github.com/songquanpeng/one-api), which is licensed under the MIT License. Upstream MIT notices, third-party notices, and frontend base project notices are documented in [NOTICE](./NOTICE), [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md), and [web/LICENSE](./web/LICENSE).

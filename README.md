@@ -73,8 +73,8 @@ one-api 解决了多渠道聚合和后台管理问题。Baize 继续保留这类
 - pnpm 9+
 
 ```bash
-git clone https://github.com/coding4m/wukong.git
-cd wukong
+git clone git@github.com:notveil/baize.git
+cd baize
 
 cd web
 pnpm install
@@ -91,15 +91,15 @@ go run ./cmd --port 3000 --log-dir ./logs
 ### 本地 Docker 构建
 
 ```bash
-docker build -t wukong:local .
+docker build -t baize:local .
 
-docker run --name wukong -d --restart always \
+docker run --name baize -d --restart always \
   -p 3000:3000 \
   -e TZ=Asia/Shanghai \
   -e LOG_DIR=/app/logs \
   -v "$PWD/data:/data" \
   -v "$PWD/logs:/app/logs" \
-  wukong:local
+  baize:local
 ```
 
 未设置 `SQL_DSN` 时，服务默认使用 SQLite。本地启用内置 PostgreSQL 时会使用内置 PostgreSQL；生产或多实例部署建议使用外部 PostgreSQL，并配置 Redis 作为运行时缓存和配置同步组件。
@@ -129,14 +129,14 @@ bash scripts/build-linux-packages.sh
 dist/packages
 ```
 
-会生成 `wukong`、`wukong-pilot`、`wukong-proxy` 的 `amd64` / `arm64`，`deb` / `rpm` 包。
+会生成 `baize`、`baize-pilot`、`baize-proxy` 的 `amd64` / `arm64`，`deb` / `rpm` 包。
 
 ## API 使用
 
 在控制台添加渠道和令牌后，可以把 Baize 当作 OpenAI 兼容 API Base 使用：
 
 ```bash
-export OPENAI_API_KEY="sk-your-wukong-token"
+export OPENAI_API_KEY="sk-your-baize-token"
 export OPENAI_BASE_URL="http://localhost:3000/v1"
 
 curl "$OPENAI_BASE_URL/chat/completions" \
@@ -175,9 +175,9 @@ curl "$OPENAI_BASE_URL/chat/completions" \
 
 默认直接运行一个进程，适合本地和小规模私有部署。规模上来后可以拆成：
 
-- `wukong`：单体模式，管理后台和中转同进程。
-- `wukong-pilot --cp`：控制面，负责管理后台、配置、账务和后台任务。
-- `wukong-proxy --dp`：数据面，负责中转流量、调度、鉴权和运行态。
+- `baize`：单体模式，管理后台和中转同进程。
+- `baize-pilot --cp`：控制面，负责管理后台、配置、账务和后台任务。
+- `baize-proxy --dp`：数据面，负责中转流量、调度、鉴权和运行态。
 
 多实例部署建议使用外部 PostgreSQL，并配置 Redis 做配置同步和运行态缓存。
 
@@ -333,7 +333,7 @@ Baize 采用 [GNU Affero General Public License v3.0](./LICENSE) 授权，并适
 
 ```text
 Baize is an open-source AI gateway derived from one-api.
-https://github.com/coding4m/wukong
+https://github.com/notveil/baize
 ```
 
 本项目基于 [one-api](https://github.com/songquanpeng/one-api) 二次开发，one-api 使用 MIT 许可证。上游 MIT 版权和许可声明、第三方依赖声明、前端基础项目声明见 [NOTICE](./NOTICE)、[THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md) 和 [web/LICENSE](./web/LICENSE)。
