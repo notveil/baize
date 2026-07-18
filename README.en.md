@@ -2,11 +2,9 @@
 
 [中文](./README.md) | [English](./README.en.md)
 
-Baize is an AI gateway for multi-model calls. It provides one entry point for model channels, protocol conversion, adaptive routing, request queues, usage accounting, cost analytics, and diagnostic logs.
+Baize is an AI gateway for multi-model calls. It brings model access, protocol conversion, traffic scheduling, usage accounting, and diagnostic logs behind one entry point, allowing applications to keep familiar APIs while the gateway handles provider differences and upstream volatility.
 
 Demo: [https://baize.cloudshift.cn](https://baize.cloudshift.cn)
-
-It keeps model access, protocol conversion, channel routing, usage settlement, and diagnostic logs inside one gateway. Application code can keep using familiar API shapes while the gateway handles provider differences, upstream volatility, usage cost, and debugging clues.
 
 > [!IMPORTANT]
 > Baize is intended only for lawful and authorized AI gateway, organization-level authentication, multi-model management, usage analytics, cost accounting, and private deployment scenarios.
@@ -17,50 +15,42 @@ It keeps model access, protocol conversion, channel routing, usage settlement, a
 
 ## Why Baize
 
-Connecting one model service is usually not hard. The maintenance cost appears after multiple models, accounts, and teams run for a while: protocol differences leak into application code, upstream limits and account state affect availability, different workloads compete for the same model resources, failed requests need explanations, and usage cost must line up with real bills.
+Connecting one model is not difficult. Keeping multiple models, accounts, and teams running reliably over time is. Protocol differences, upstream rate limits, traffic contention, incident diagnosis, and cost accounting eventually become an application maintenance burden.
 
-Baize keeps those moving parts in the gateway layer so applications can keep a stable model-call boundary.
+Baize keeps these concerns in the gateway layer:
 
-- Stable call boundary: application code does not bind directly to provider differences; protocol adaptation and upstream endpoint selection stay in the gateway.
-- Reduced failure spread: rate limits, timeouts, 5xx responses, auth failures, and quota problems go through retry, degradation, breaker, or skip paths.
-- Controlled ingress traffic: request queues, priorities, and lane/user/channel concurrency and rate limits reduce the impact of traffic spikes on critical calls.
-- Explainable routing: selection uses live load, latency, error rate, heartbeat, and breaker state, then records selected, skipped, and degraded channels.
-- Reconciled usage cost: reservation, settlement, refund, user price, upstream cost, and usage details are recorded separately.
-- Deployment path that can evolve: run as one process first, then split control plane and data plane when needed.
+- **Unified access**: applications do not bind directly to providers; the gateway handles protocol adaptation and endpoint selection.
+- **Reliable operation**: queues, limits, retries, degradation, heartbeats, and circuit breakers contain failures.
+- **Adaptive routing**: channels are selected using live load, latency, cost, and error rates, with the decision reasons recorded.
+- **Accurate accounting**: reservations, settlements, refunds, user prices, channel costs, and usage details are recorded separately.
+- **Incremental scaling**: start with one process, then split the control plane and data plane when needed.
 
-## Why Not Another one-api
+> **Baize aims to use clear boundaries to avoid solving recurring problems through tightly coupled patches.**
 
-one-api solved multi-channel aggregation and admin operations. Baize keeps those useful parts, but shifts the focus to data-plane quality: how requests enter the gateway, how protocols are converted, how channels are selected, how failures degrade, how billing is settled, and how logs explain decisions.
+## Design Tradeoffs
 
-| Area | Common aggregator approach | Baize approach |
+Baize does not give every channel its own relay flow. Shared behavior stays in the gateway, while adaptors only declare provider differences.
+
+| Area | Common approach | Baize |
 | --- | --- | --- |
-| Forwarding | Mostly OpenAI-compatible proxying with special branches | Passthrough first; convert only when protocols differ |
-| Protocol boundary | Conversion logic often spreads across channel adaptors | `EntryPoint -> Endpoint -> Inlet -> Outlet` as one model |
-| Adaptor | One interface owns URL, headers, conversion, transport, response, and model list | Adaptors only declare name, auth, heartbeat, and endpoints |
-| Routing | Mostly priority, weight, retry, and auto-disable | Combine pending load, EWMA latency, first-token latency, error rate, heartbeat, and breaker state |
-| Health state | Failures mutate channel status or wait for manual action | Configuration and runtime state are separate; temporary failures degrade, trip breakers, and recover |
-| Streaming | Protocol handlers write SSE directly | Gateway owns stream writes, per-event safety checks, logs, and usage aggregation |
-| Diagnostics | Know that a request failed | Explain why a channel was selected, skipped, degraded, or had its breaker tripped |
-| Deployment | Single admin + proxy process | Single process by default, with control-plane / data-plane split available |
-
-The tradeoff is simple: **smaller channel adaptors make the gateway pipeline more uniform and cheaper to maintain.**
+| Forwarding | Primarily OpenAI-compatible proxying with growing provider branches | Passthrough for matching protocols; explicit conversion when protocols differ |
+| Adaptors | Own URLs, auth, conversion, transport, and responses | Declare only name, auth, heartbeat, and endpoints |
+| Routing | Primarily priority, weight, and retries | Combine load, latency, cost, error rate, heartbeat, and breaker state |
+| Health | Temporary failures mutate channel configuration | Separate configuration from runtime state, with automatic degradation and recovery |
+| Streaming | Each channel handles SSE independently | The gateway owns streaming, safety checks, logs, and usage aggregation |
+| Deployment | Console and relay always share one process | Support both all-in-one and control-plane / data-plane deployments |
 
 ## Core Capabilities
 
-- 🌐 **Multi-channel gateway**: OpenAI, Azure OpenAI, Anthropic, Gemini, Vertex AI, DashScope, Doubao, DeepSeek, Moonshot, Mistral, Minimax, Ollama, SiliconFlow, StepFun, Together AI, Cohere, Cloudflare Workers AI, Tencent Hunyuan, Xunfei Spark, Zhipu, Baidu Qianfan, and more.
-- 🔌 **Multiple client API formats**: OpenAI Chat Completions, OpenAI Responses, Anthropic Messages, Gemini generateContent / streamGenerateContent / Interactions, Embeddings, Images, Audio, Rerank, video tasks, and image tasks.
-- 🔁 **Passthrough and protocol conversion**: OpenAI-compatible upstreams are used directly first; OpenAI Chat / Responses, Anthropic Messages, and Gemini are converted through explicit protocol matrices.
-- 🧩 **Declarative adaptors**: channels declare upstream endpoints, auth, heartbeat requests, and required request / response conversion; they do not own the full relay lifecycle.
-- 🛤️ **Unified relay path**: real requests, manual channel tests, and heartbeat probes reuse the same endpoint, auth, request construction, response validation, and error classification abstractions.
-- 🚦 **Fine-grained traffic control**: request priorities, lane isolation, and user/channel concurrency and rate limits control both ingress pressure and upstream egress capacity.
-- ⚖️ **Adaptive routing**: channel selection combines configured weight, pending requests, EWMA latency, first-token latency, error rate, recent failures, heartbeat, and breaker state.
-- 💓 **Runtime health**: phi-style heartbeat detection and runtime breakers avoid permanently damaging channel configuration after one upstream jitter.
-- 🌊 **Streaming response pipeline**: the service owns SSE writes, per-event response safety checks, log sampling, and usage aggregation, reducing channel branches that bypass shared logic.
-- 💰 **Cost and accounting**: user-facing price and upstream channel cost are separated, with reservation, settlement, refund, and usage details for text, image, audio, video, and tool capabilities.
-- 🔎 **Upstream model discovery**: fetch upstream models through each channel's declared `models` endpoint, both for saved channels and temporary edit-form probes.
-- 🧾 **Audit and diagnostics**: request logs, usage records, channel diagnostics, runtime breaker state, response time, and upstream errors are traceable.
-- 🏗️ **Control-plane / data-plane modes**: run as one process, or split with `--cp` and `--dp`.
-- 🔐 **OAuth-backed channels**: Codex / OpenAI OAuth and Gemini OAuth are supported where applicable.
+- 🌐 **Multiple channels and protocols**: supports OpenAI, Azure OpenAI, Anthropic, Gemini, Vertex AI, AWS Bedrock, DashScope, Doubao, DeepSeek, and other channels, with OpenAI Chat / Responses, Anthropic Messages, Gemini, Embeddings, Images, Audio, Rerank, and asynchronous task entry points.
+- 🔁 **Passthrough and conversion**: matching protocols are passed through first; cross-protocol conversion follows explicit entry-point and endpoint relationships.
+- 🧩 **Declarative adaptors**: channels declare endpoints, authentication, heartbeat behavior, and necessary provider differences without owning the full relay lifecycle.
+- 🚦 **Traffic and scheduling**: request priorities, lanes, user/channel concurrency and rate limits, and runtime-aware adaptive routing.
+- 🧠 **Context optimization**: when a request is too long and optimization is enabled for the token, Baize can shorten common expressions, merge duplicate content, and truncate oversized text to reduce unnecessary context and token usage.
+- 💓 **Health and resilience**: heartbeat detection, runtime degradation, circuit breakers, retries, and recovery handle upstream volatility without polluting persistent configuration.
+- 💰 **Cost and accounting**: separates user pricing from channel costs, with reservation, settlement, refund, and detailed usage records.
+- 🧾 **Audit and diagnostics**: records requests, usage, latency, upstream errors, and the reasons channels were selected, skipped, or degraded.
+- 🏗️ **Flexible deployment**: supports all-in-one mode as well as separate `pilot` control-plane and `proxy` data-plane deployments.
 
 ## Quick Start
 
@@ -68,7 +58,7 @@ The tradeoff is simple: **smaller channel adaptors make the gateway pipeline mor
 
 Requirements:
 
-- Go 1.26.4+
+- Go 1.26.5+
 - Node.js 20+
 - pnpm 9+
 
@@ -102,7 +92,7 @@ docker run --name baize -d --restart always \
   baize:local
 ```
 
-If `SQL_DSN` is not set, Baize uses SQLite by default. When embedded PostgreSQL is enabled locally, Baize uses embedded PostgreSQL. External PostgreSQL and Redis are recommended for production or multi-instance deployments.
+If `SQL_DSN` is not set during source development, Baize uses SQLite by default. Linux packages use bundled PostgreSQL by default, while container deployments must configure an external database. External PostgreSQL and Redis are recommended for production or multi-instance deployments.
 
 ### Docker Compose
 
@@ -114,6 +104,10 @@ If `SQL_DSN` is not set, Baize uses SQLite by default. When embedded PostgreSQL 
 ```bash
 docker compose up -d --build
 ```
+
+### Helm
+
+On Kubernetes, Helm can deploy the `pilot` control plane and `proxy` data plane separately. The Chart does not deploy all-in-one mode, a database, or Redis. See [helm/README.md](helm/README.md) for configuration and installation examples.
 
 ### Linux Packages
 
@@ -154,6 +148,9 @@ Anthropic Messages and Gemini-compatible entry points are also available when th
 | `REDIS_CONN_STRING` | Redis connection string; recommended for multi-instance deployments |
 | `LOG_DIR` | log directory, default `./logs` |
 | `CONFIG_SYNC_INTERVAL_SECONDS` | configuration sync interval |
+| `CONFIG_TOKEN_INVALID_TTL_SECONDS` | invalid token cache duration, default `300` seconds |
+| `CRITICAL_TOKEN_LIMIT` | invalid token attempt limit per IP, default `60`; set to `0` or lower to disable |
+| `CRITICAL_TOKEN_LIMIT_DURATION_SECONDS` | invalid token attempt window, default `600` seconds |
 | `CHANNEL_REQUEST_TIMEOUT` | upstream request timeout in seconds |
 | `CHANNEL_PROXY` | global upstream proxy |
 | `CHANNEL_TEST_PROMPT` | prompt used by manual channel tests |
@@ -179,117 +176,6 @@ For multi-instance deployments, use external PostgreSQL and configure Redis for 
 
 ![Baize AI gateway architecture overview](./docs/ai-gateway-overview.png)
 
-```mermaid
-flowchart LR
-  A[Client entry<br/>EntryPoint] --> B[Entry protocol detection]
-  B --> C[Channel selection<br/>ResolvePlan]
-  C --> D[Upstream endpoint planning]
-  D --> E[Request conversion<br/>Endpoint.Inlet]
-  E --> F[Upstream request<br/>ChannelTransport.DoRequest]
-  F --> G[Response conversion<br/>Endpoint.Outlet]
-  G --> H[Response / usage / log / billing]
-```
-
-## Design Principles
-
-Baize keeps entry points, routing, protocol conversion, billing, and diagnostics in the gateway so multi-channel model access can remain stable, controlled, and explainable:
-
-- Runtime-aware routing: choose better channels using configured weights, live latency, error rate, heartbeat state, and breaker state.
-- Smooth health detection: use phi-style heartbeat detection to reduce false positives from short upstream jitter.
-- Configuration/runtime separation: keep manual configuration stable while temporary failures are handled through runtime degradation, breaker trips, and recovery.
-- Error-aware handling: treat rate limits, timeouts, auth failures, insufficient quota, and request errors differently.
-- Dedicated billing facts: keep reservation, settlement, refund, and usage aggregation separate from request logs for audit and reconciliation.
-- Explainable diagnostics: record why channels are selected, skipped, degraded, breaker-tripped, or recovered.
-- Split-ready deployment: run as one process, or split control plane and data plane when deployment scale requires it.
-
-## Architecture Boundaries
-
-Baize's adaptor design has one goal: adding a channel should start with declaring its capabilities, not copying a full relay flow.
-
-An adaptor keeps four responsibilities:
-
-```go
-type Adaptor interface {
-    Name() string
-    Auth() wireapi.Auth
-    Heartbeat() wireapi.Heartbeat
-    Endpoints() []wireapi.Endpoint
-}
-```
-
-Those methods describe:
-
-- `Name()`: channel name.
-- `Auth()`: outbound authentication.
-- `Heartbeat()`: minimal request for manual tests and heartbeat probes.
-- `Endpoints()`: supported upstream APIs.
-
-Traditional adaptors tend to put conversion, transport, response handling, billing, and logs inside each channel until the adaptor becomes a `God Interface`. Baize keeps the shared path in the gateway: entry detection, routing, protocol conversion, HTTP transport, response normalization, usage settlement, and audit logging use one flow. The adaptor only keeps channel-specific differences such as upstream addresses, authentication, request format, and response outlet behavior.
-
-If protocol conversion logic is pushed into entry handlers or channel adaptors, maintenance cost grows across client protocols, upstream protocols, streaming and non-streaming paths, tool calls, and multimodal payloads. Adding a new client protocol means every channel has to understand how to receive it. Adding a new upstream protocol means several client-to-upstream paths need to be filled in. Logs, billing, safety checks, error classification, and usage aggregation then start to follow those branches too, which leads to some paths being fully observable while others miss fields or classify errors too generically.
-
-Baize splits the problem into two layers: channel adaptors declare which upstream endpoints a provider supports, while protocol conversion happens only at the `Endpoint.Inlet` and `Endpoint.Outlet` boundaries. Adding a provider does not require that provider adaptor to understand every client protocol. Adding a protocol direction does not require rewriting each channel's relay flow. Upstream transport, streaming writes, logs, billing, safety checks, and error classification still use the same gateway pipeline, so more protocols do not force complexity into every adaptor.
-
-Design notes:
-
-- [relay architecture boundaries](./docs/relay-architecture-boundaries.md)
-- [control / data plane split](./docs/control-data-plane-split.md)
-- [runtime boundaries](./docs/runtime-boundaries.md)
-
-## Protocol Conversion
-
-Text and generation APIs are converted along the path of client entry point -> upstream endpoint -> client response. Image, audio, video, rerank, and other capabilities use their declared channel endpoints or capability-specific paths, so they are not included in this text-protocol section.
-
-Request path:
-
-```mermaid
-flowchart LR
-  A[Client entry point] --> B[Upstream endpoint selection]
-  B --> C[Request conversion]
-  C --> D[Upstream inlet]
-```
-
-| Client entry | OpenAI chat endpoint | OpenAI responses endpoint | Anthropic messages endpoint | Gemini generateContent endpoint | Gemini streamGenerateContent endpoint |
-| --- | --- | --- | --- | --- | --- |
-| OpenAI chat | direct | converted | converted | converted | stream converted |
-| OpenAI responses | converted | direct | converted | converted | stream converted |
-| Anthropic messages | converted | converted | direct | converted | stream converted |
-| Gemini generateContent | converted | converted | converted | direct | n/a |
-| Gemini streamGenerateContent | stream converted | stream converted | n/a | n/a | direct |
-| Gemini interactions | converted | converted | converted | n/a | n/a |
-
-Non-stream response path:
-
-```mermaid
-flowchart LR
-  A[Upstream outlet response] --> B[Upstream protocol]
-  B --> C[Client entry protocol conversion]
-```
-
-| Upstream endpoint | OpenAI chat client | OpenAI responses client | Anthropic messages client | Gemini generateContent client | Gemini interactions client |
-| --- | --- | --- | --- | --- | --- |
-| OpenAI chat | direct | converted | converted | converted | converted |
-| OpenAI responses | converted | direct | converted | converted | converted |
-| Anthropic messages | converted | converted | direct | converted | converted |
-| Gemini generateContent | converted | converted | converted | direct | n/a |
-
-Stream response path:
-
-```mermaid
-flowchart LR
-  A[Upstream stream response] --> B[Upstream protocol]
-  B --> C[Client entry protocol stream conversion]
-```
-
-| Upstream endpoint | OpenAI chat client | OpenAI responses client | Anthropic messages client | Gemini streamGenerateContent client | Gemini interactions client |
-| --- | --- | --- | --- | --- | --- |
-| OpenAI chat | direct | converted | converted | converted | converted |
-| OpenAI responses | converted | direct | converted | converted | converted |
-| Anthropic messages | converted | converted | direct | n/a | converted |
-| Gemini streamGenerateContent | converted | converted | converted | direct | n/a |
-
-Gemini Interactions is currently a client-facing mode. It can be backed by OpenAI chat, OpenAI responses, or Anthropic messages, but it is not used as an upstream endpoint for non-Gemini channels.
-
 ## Development
 
 ```bash
@@ -310,7 +196,7 @@ Key directories:
 
 ## Contributing
 
-Issues, design discussions, and pull requests are welcome. Before contributing, read [Architecture Boundaries](#architecture-boundaries) and [relay architecture boundaries](./docs/relay-architecture-boundaries.md) to avoid turning channel differences into another large interface.
+Issues, design discussions, and pull requests are welcome. Before contributing, read [relay architecture boundaries](./docs/relay-architecture-boundaries.md) to avoid turning channel differences into another large interface.
 
 Development guidelines:
 
@@ -330,6 +216,6 @@ Baize is an open-source AI gateway derived from one-api.
 https://github.com/notveil/baize
 ```
 
-This project is derived from [one-api](https://github.com/songquanpeng/one-api), which is licensed under the MIT License. Upstream MIT notices, third-party notices, and frontend base project notices are documented in [NOTICE](./NOTICE), [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md), and [web/LICENSE](./web/LICENSE).
+Third-party dependency notices and frontend base project notices are documented in [NOTICE](./NOTICE), [THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md), and [web/LICENSE](./web/LICENSE).
 
-If your organization cannot comply with AGPLv3 network-service obligations, contact the project maintainers for commercial licensing. Regardless of the authorization model, notices for one-api, the frontend base project, and third-party dependencies must still be preserved.
+If your organization cannot comply with AGPLv3 network-service obligations, contact the project maintainers for commercial licensing. Regardless of the authorization model, notices for the frontend base project and third-party dependencies must still be preserved.
